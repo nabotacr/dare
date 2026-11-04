@@ -4,12 +4,13 @@
 
 ```
 dare-admin/
-├─ index.html              로그인 + 2단계 인증
+├─ index.html              로그인
 ├─ dashboard.html          대시보드
 ├─ submissions.html        제출내역 목록 (검색·CSV·일괄 처리)
 ├─ submission.html         제출 상세 (?id=)
 ├─ edit-requests.html      수정요청 처리
-├─ calls.html              공고·수정기간
+├─ form.html               지원서 설정 (항목 편집, 접수 열기/닫기, 변경 이력)
+├─ mail-logs.html          메일 발송 로그 (실패 건 재발송)
 ├─ recipients.html         메일 수신자
 ├─ templates.html          메일 양식
 ├─ audit.html              감사 로그 (최고관리자)
@@ -33,5 +34,10 @@ dare-admin/
 ## 보안 원칙
 - 스크립트는 모두 이 저장소 안의 파일만 씁니다. 인라인 스크립트가 없어 CSP 를 `script-src 'self'` 로 잠글 수 있습니다.
 - `config.js` 의 anon 키는 공개되어도 되는 키입니다. service_role 키, Resend 키는 절대 커밋하지 않습니다.
-- 모든 페이지는 열릴 때 로그인 + 2단계 인증 + 관리자 등록 여부를 확인하고, 아니면 로그인 화면으로 보냅니다.
+- 모든 페이지는 열릴 때 로그인 + 관리자 등록 여부를 확인하고, 아니면 로그인 화면으로 보냅니다.
   실제 데이터 접근은 DB 권한(RLS)이 막으므로, 이 화면 코드를 누가 보더라도 데이터는 볼 수 없습니다.
+
+## 파일을 고친 뒤 화면이 안 바뀔 때
+GitHub Pages 와 브라우저가 JS·CSS 를 잠시 저장(캐시)해 둡니다. 파일을 고치면 모든 HTML 의 `?v=20261104c` 숫자를
+새 날짜로 바꿔 주세요 (GitHub 웹에서 저장소 전체 찾기·바꾸기, 또는 VS Code 의 전체 바꾸기). 브라우저가 새 파일을 받아옵니다.
+급하게 확인할 때는 시크릿 창으로 열면 됩니다.

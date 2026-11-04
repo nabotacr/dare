@@ -2,16 +2,16 @@
  * 필터는 주소(?call=&status=&q=)에 남아서 새로고침·공유해도 유지됩니다. 행을 누르면 submission.html 로 이동 */
 DA.page('submissions', async function (main) {
   var D = DA, esc = D.esc, $ = D.$;
-  var calls = await D.loadCalls();
-  var f = { call: D.param('call') || '', status: D.param('status') || '', text: D.param('q') || '' };
+  var f = { status: D.param('status') || '', revised: D.param('revised') || '', text: D.param('q') || '' };
+  var form = await D.rpc('get_current_form');
   var rows = [];
 
   main.innerHTML =
     '<h1>제출내역</h1><div class="card"><div class="row">' +
-    '<select id="f-call">' + D.callOptions(calls, f.call, true) + '</select>' +
     '<select id="f-status"><option value="">전체 상태</option>' + Object.keys(D.STATUS).map(function (k) {
       return '<option value="' + k + '"' + (f.status === k ? ' selected' : '') + '>' + D.STATUS[k][0] + '</option>';
     }).join('') + '</select>' +
+    '<label class="inline"><input type="checkbox" id="f-revised"' + (f.revised ? ' checked' : '') + '>수정·보완 제출된 건만</label>' +
     '<input id="f-text" class="grow" placeholder="접수번호·제목·성명·이메일·소속" value="' + esc(f.text) + '">' +
     '<button class="b" id="f-go">검색</button><button class="b g" id="f-csv">엑셀(CSV)</button></div>' +
     '<div class="row" style="margin-top:10px"><span class="muted">선택한 항목:</span>' +
@@ -21,7 +21,7 @@ DA.page('submissions', async function (main) {
 
   $('#f-go').addEventListener('click', function () {
     var p = new URLSearchParams();
-    if ($('#f-call').value) p.set('call', $('#f-call').value);
+    if ($('#f-revised').checked) p.set('revised', '1');
     if ($('#f-status').value) p.set('status', $('#f-status').value);
     if ($('#f-text').value.trim()) p.set('q', $('#f-text').value.trim());
     location.search = p.toString();
@@ -47,7 +47,7 @@ DA.page('submissions', async function (main) {
 
   async function load() {
     var query = D.sb.from('submissions').select('*, submission_results(result)').order('submitted_at', { ascending: false }).limit(1000);
-    if (f.call) query = query.eq('call_id', f.call);
+    if (f.revised) query = query.gt('current_version', 1);
     if (f.status) query = query.eq('status', f.status);
     if (f.text) {
       var t = f.text.replace(/[%,()*]/g, ' ');   // 검색어 안의 특수문자 제거 (필터 구문 깨짐 방지)
@@ -72,11 +72,13 @@ DA.page('submissions', async function (main) {
 
   function exportCsv() {
     if (!rows.length) return D.toast('info', '내보낼 데이터가 없습니다.');
-    var head = ['접수번호', '연구제목', '연구자 성명', '국적', '소속기관', '이메일', '상태', '제출일시', '최근 수정', '버전'];
+    var extra = (form && form.fields || []).filter(function (x) { return !x.base && x.type !== 'file' && x.type !== 'consent'; });
+    var head = ['접수번호', '연구제목', '연구자 성명', '국적', '소속기관', '이메일', '상태', '제출일시', '최근 수정', '버전'].concat(extra.map(function (x) { return x.label; }));
     // 셀 값이 = + - @ 로 시작하면 엑셀이 수식으로 실행하므로 앞에 ' 를 붙여 막음
     var cell = function (v) { v = String(v == null ? '' : v); if (/^[=+\-@]/.test(v)) v = "'" + v; return '"' + v.replace(/"/g, '""') + '"'; };
     var csv = '\ufeff' + [head].concat(rows.map(function (s) {
-      return [s.receipt_no, s.research_title, s.researcher_name, s.nationality, s.affiliation, s.email, D.STATUS[s.status][0], D.fmt(s.submitted_at), D.fmt(s.last_submitted_at), s.current_version];
+      return [s.receipt_no, s.research_title, s.researcher_name, s.nationality, s.affiliation, s.email, D.STATUS[s.status][0], D.fmt(s.submitted_at), D.fmt(s.last_submitted_at), s.current_version]
+        .concat(extra.map(function (x) { return D.snapValue(s, x) === '-' ? '' : D.snapValue(s, x); }));
     })).map(function (r) { return r.map(cell).join(','); }).join('\r\n');
     var a = document.createElement('a');
     a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));

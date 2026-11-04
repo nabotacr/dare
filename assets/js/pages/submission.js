@@ -6,6 +6,9 @@ DA.page('submissions', async function (main) {
   var id = D.param('id');
   if (!D.isUuid(id)) { main.innerHTML = '<div class="msg err">잘못된 주소입니다.</div><a href="submissions.html">목록으로</a>'; return; }
 
+  var versions = [], shownVer = null;
+  var KIND = { initial: '최초 제출', edit: '수정 제출', supplement: '보완 제출', resubmit: '수정요청 승인 후 제출' };
+
   async function load() {
     var r = await Promise.all([
       D.q(sb.from('submissions').select('*, calls(*)').eq('id', id).single()),
@@ -13,42 +16,37 @@ DA.page('submissions', async function (main) {
       D.q(sb.from('submission_events').select('*').eq('submission_id', id).order('created_at', { ascending: false })),
       D.q(sb.from('submission_memos').select('*').eq('submission_id', id).order('created_at', { ascending: false })),
       D.q(sb.from('edit_requests').select('*').eq('submission_id', id).maybeSingle()),
-      D.q(sb.from('submission_results').select('*').eq('submission_id', id).maybeSingle())
+      D.q(sb.from('submission_results').select('*').eq('submission_id', id).maybeSingle()),
+      D.q(sb.from('submission_versions').select('*').eq('submission_id', id).order('version_no', { ascending: false }))
     ]);
+    versions = r[6];
     render(r[0], r[1], r[2], r[3], r[4], r[5]);
   }
 
   function render(s, files, events, memos, req, result) {
     var call = s.calls || {};
+    if (shownVer == null || !versions.some(function (v) { return v.version_no === shownVer; })) shownVer = s.current_version;
     var resultOpen = call.result_open_at && Date.parse(call.result_open_at) <= Date.now();
-    var byVer = {};
-    files.forEach(function (f) { (byVer[f.version_no] = byVer[f.version_no] || []).push(f); });
 
     main.innerHTML =
       '<p><a href="submissions.html">← 제출내역 목록</a></p>' +
       '<div class="row" style="justify-content:space-between"><h1 style="margin:0">' + esc(s.receipt_no) + ' · ' + esc(s.research_title) + '</h1>' + D.badge(s.status) + '</div>' +
       '<div class="split" style="margin-top:16px"><div>' +
 
-      // 기본 정보
-      '<div class="card"><h2>제출 정보</h2><dl class="kv">' +
-      '<dt>공고</dt><dd>' + esc(call.code + ' · ' + call.title) + '</dd>' +
-      '<dt>연구제목</dt><dd>' + esc(s.research_title) + '</dd><dt>연구자 성명</dt><dd>' + esc(s.researcher_name) + '</dd>' +
-      '<dt>국적</dt><dd>' + esc(s.nationality) + '</dd><dt>소속기관</dt><dd>' + esc(s.affiliation || '-') + '</dd>' +
+      // 제출 상태 요약
+      '<div class="card"><h2>접수 정보</h2><dl class="kv">' +
       '<dt>이메일</dt><dd>' + esc(s.email) + '</dd><dt>개인정보 동의</dt><dd>' + D.fmt(s.consent_at) + ' (' + esc(s.consent_version) + ')</dd>' +
       '<dt>최초 제출</dt><dd>' + D.fmt(s.submitted_at) + '</dd><dt>현재 버전</dt><dd>v' + s.current_version + ' · ' + D.fmt(s.last_submitted_at) + '</dd>' +
       (s.status === 'supplement_requested' ? '<dt>보완 사유</dt><dd>' + esc(s.supplement_reason) + '<br><span class="muted">기한 ' + D.fmt(s.supplement_deadline) + '</span></dd>' : '') +
       (s.status === 'resubmit_allowed' ? '<dt>수정 기한</dt><dd>' + D.fmt(s.resubmit_deadline) + '</dd>' : '') +
-      (s.edit_deadline_override ? '<dt>개별 수정기한</dt><dd>' + D.fmt(s.edit_deadline_override) + '</dd>' : '') +
       (s.withdrawn_at ? '<dt>제출취소</dt><dd>' + D.fmt(s.withdrawn_at) + ' · ' + esc(s.withdraw_reason || '사유 없음') + '</dd>' : '') +
       '<dt>결과</dt><dd>' + (result ? D.RESULT_LABEL[result.result] : '미입력') + (resultOpen ? ' <span class="muted">(공개됨)</span>' : '') + '</dd></dl></div>' +
 
-      // 첨부
-      '<div class="card"><h2>첨부파일</h2>' + Object.keys(byVer).sort(function (a, b) { return b - a; }).map(function (v) {
-        return '<h3>v' + v + (Number(v) === s.current_version ? ' (현재)' : '') + '</h3>' + byVer[v].map(function (f) {
-          return '<div>' + D.FILE_LABEL[f.file_kind] + ' · ' + (f.purged_at ? '<span class="muted">보관기간 경과로 삭제됨</span>'
-            : '<button class="l" data-file="' + f.id + '">' + esc(f.original_name) + '</button> <span class="muted">' + (f.size_bytes ? (f.size_bytes / 1048576).toFixed(1) + 'MB' : '') + '</span>') + '</div>';
-        }).join('');
-      }).join('') + '<p class="muted">다운로드할 때마다 감사 로그에 기록되고, 링크는 2분 동안만 유효합니다.</p></div>' +
+      // 버전별 제출 내용 (입력값 + 첨부파일)
+      '<div class="card"><div class="row" style="justify-content:space-between"><h2 style="margin:0">제출 내용</h2>' +
+      '<div class="row">' + versions.map(function (v) {
+        return '<button class="b sm ' + (v.version_no === shownVer ? '' : 'g') + '" data-ver="' + v.version_no + '" title="' + esc(KIND[v.kind] || v.kind) + ' · ' + D.fmt(v.created_at) + '">v' + v.version_no + (v.version_no === s.current_version ? ' 현재' : '') + '</button>';
+      }).join('') + '</div></div>' + versionBody(s, files) + '</div>' +
 
       // 처리 이력
       '<div class="card"><h2>처리 이력</h2><ul class="time">' + events.map(function (ev) {
@@ -91,6 +89,7 @@ DA.page('submissions', async function (main) {
 
     main.onclick = async function (e) {
       var fb = e.target.closest('[data-file]'); if (fb) return download(Number(fb.dataset.file));
+      var vb = e.target.closest('[data-ver]'); if (vb) { shownVer = Number(vb.dataset.ver); return render(s, files, events, memos, req, result); }
       var b = e.target.closest('[data-act]'); if (!b) return;
       b.disabled = true;
       try {
@@ -112,6 +111,24 @@ DA.page('submissions', async function (main) {
         await load();
       } catch (err) { D.toast('err', D.errText(err)); b.disabled = false; }
     };
+  }
+
+  // 선택한 버전의 입력값·첨부를 표로 (항목 이름은 제출 당시 기준)
+  function versionBody(s, files) {
+    var v = versions.filter(function (x) { return x.version_no === shownVer; })[0];
+    if (!v) return '<p class="muted">버전 기록이 없습니다.</p>';
+    var snap = v.snapshot, labels = snap.labels && snap.labels.length ? snap.labels : [];
+    var fileRow = function (key) { return files.filter(function (f) { return f.version_no === v.version_no && f.file_kind === key; })[0]; };
+    return '<p class="muted" style="margin:8px 0 12px">' + esc(KIND[v.kind] || v.kind) + ' · ' + D.fmt(v.created_at) + (snap.form_version ? ' · 지원서 설정 v' + snap.form_version : '') + '</p>' +
+      '<dl class="kv">' + labels.map(function (l) {
+        var cell;
+        if (l.type === 'file') {
+          var f = fileRow(l.key);
+          cell = !f ? '-' : f.purged_at ? '<span class="muted">보관기간 경과로 삭제됨</span>'
+            : '<button class="l" data-file="' + f.id + '">' + esc(f.original_name || 'PDF') + '</button> <span class="muted">' + (f.size_bytes ? (f.size_bytes / 1048576).toFixed(1) + 'MB' : '') + '</span>';
+        } else cell = esc(D.snapValue(snap, l));
+        return '<dt>' + esc(l.label) + '</dt><dd style="white-space:pre-wrap">' + cell + '</dd>';
+      }).join('') + '</dl><p class="muted">첨부 다운로드는 감사 로그에 기록되고, 링크는 2분 동안만 유효합니다.</p>';
   }
 
   // 첨부 다운로드: Edge Function(admin-file-url)이 권한 확인 + 감사 로그 후 2분짜리 링크 발급

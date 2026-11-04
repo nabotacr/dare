@@ -44,9 +44,10 @@
     { id: 'dashboard',     href: 'dashboard.html',     label: '대시보드' },
     { id: 'submissions',   href: 'submissions.html',   label: '제출내역' },
     { id: 'edit-requests', href: 'edit-requests.html', label: '수정요청' },
-    { id: 'calls',         href: 'calls.html',         label: '공고·수정기간' },
-    { id: 'recipients',    href: 'recipients.html',    label: '메일 수신자' },
+    { id: 'form',          href: 'form.html',          label: '지원서 설정' },
+    { id: 'mail-logs',     href: 'mail-logs.html',     label: '메일 발송 로그' },
     { id: 'templates',     href: 'templates.html',     label: '메일 양식' },
+    { id: 'recipients',    href: 'recipients.html',    label: '메일 수신자' },
     { id: 'audit',         href: 'audit.html',         label: '감사 로그', superOnly: true }
   ];
 
@@ -93,6 +94,16 @@
     withdrawn:            ['제출취소', '#5f6577', '#eef0f4']
   };
   function badge(st) { var s = STATUS[st] || [st, '#333', '#eee']; return '<span class="badge" style="color:' + s[1] + ';background:' + s[2] + '">' + esc(s[0]) + '</span>'; }
+  var TYPE_LABEL = { text: '단답형', textarea: '장문형', email: '이메일', number: '숫자', date: '날짜', url: '링크(URL)', yesno: '예/아니오',
+                     radio: '단일선택', select: '드롭다운', checkbox: '다중선택', country: '국가 선택', file: '파일(PDF)', consent: '동의' };
+  var BASE_COLS = ['research_title', 'researcher_name', 'nationality', 'affiliation', 'email'];
+  function snapValue(snap, l) {
+    var v = BASE_COLS.indexOf(l.key) >= 0 ? snap[l.key] : (snap.answers || {})[l.key];
+    if (v == null || v === '' || (Array.isArray(v) && !v.length)) return '-';
+    if (l.type === 'yesno') return v === 'yes' ? '예' : '아니오';
+    if (l.type === 'consent') return v === true ? '동의함' : '-';
+    return Array.isArray(v) ? v.join(', ') : String(v);
+  }
   var FILE_LABEL = { proposal: 'Research Proposal', budget: 'Research Budget Plan', cv: 'CV' };
   var RESULT_LABEL = { selected: '선정', not_selected: '미선정' };
 
@@ -153,7 +164,7 @@
   window.DA = {
     sb: sb, config: CFG, $: $, $$: $$, esc: esc, fmt: fmt, toLocal: toLocal, fromLocal: fromLocal,
     errText: errText, loginError: loginError, toast: toast, rpc: rpc, q: q, param: param, isUuid: isUuid, log: log,
-    STATUS: STATUS, badge: badge, FILE_LABEL: FILE_LABEL, RESULT_LABEL: RESULT_LABEL,
+    STATUS: STATUS, badge: badge, FILE_LABEL: FILE_LABEL, TYPE_LABEL: TYPE_LABEL, BASE_COLS: BASE_COLS, snapValue: snapValue, RESULT_LABEL: RESULT_LABEL,
     loadCalls: loadCalls, period: period, callOptions: callOptions, currentAdmin: currentAdmin, logout: logout, page: page
   };
 })();
