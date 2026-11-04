@@ -33,7 +33,7 @@
     var me = await D.currentAdmin();
     if (!me) {
       await sb.auth.signOut(); btn.disabled = false;
-      return msg('err', '관리자로 등록되지 않은 계정입니다. SQL Editor 에서 admins 테이블에 이 계정을 추가해 주세요. (설치순서 1-6번)');
+      return msg('err', '로그인은 됐지만 관리자 권한이 확인되지 않습니다.\n① SQL Editor 에서 admins 테이블에 이 계정이 등록됐는지\n② 01c_patch_관리자_2단계인증_해제.sql 을 실행했는지 확인해 주세요.');
     }
     D.log('admin_login');
     location.replace('dashboard.html');
