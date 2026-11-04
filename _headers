@@ -1,0 +1,10 @@
+# Cloudflare Pages 보안 헤더 (Netlify 도 같은 형식). YOUR-PROJECT-REF 를 실제 값으로 바꾸세요.
+/*
+  Content-Security-Policy: default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src https://YOUR-PROJECT-REF.supabase.co; frame-ancestors 'none'; base-uri 'none'; form-action 'none'
+  X-Frame-Options: DENY
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: no-referrer
+  X-Robots-Tag: noindex, nofollow
+  Permissions-Policy: camera=(), microphone=(), geolocation=()
+  Strict-Transport-Security: max-age=31536000
+  Cache-Control: no-store
