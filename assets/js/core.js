@@ -1,7 +1,7 @@
 /* =====================================================================
  * DARE 관리자 공통 모듈 (모든 페이지가 사용)
  *  - Supabase 클라이언트 1개
- *  - 페이지 진입 시 권한 확인: 로그인 + 2단계 인증(aal2) + admins 등록
+ *  - 페이지 진입 시 권한 확인: 로그인 + admins 등록
  *    → 통과 못 하면 로그인 화면(index.html)으로 이동
  *  - 상단 메뉴, 자동 로그아웃, 공통 유틸
  *
@@ -14,7 +14,27 @@
   // 다른 사이트가 이 페이지를 iframe 으로 감싸는 것(클릭재킹) 차단 — 헤더를 못 쓰는 호스팅 대비
   if (window.top !== window.self) { document.documentElement.innerHTML = ''; throw new Error('framed'); }
 
-  var CFG = window.DARE_ADMIN_CONFIG;
+  var CFG = window.DARE_ADMIN_CONFIG || {};
+
+  // 설정 점검: config.js 에 예시값이 남아 있으면 로그인 시도 전에 원인을 안내
+  var configProblem =
+    !/^https:\/\/[a-z0-9-]+\.supabase\.co$/i.test(CFG.SUPABASE_URL || '') || /your-project-ref/i.test(CFG.SUPABASE_URL || '')
+      ? 'assets/js/config.js 의 SUPABASE_URL 이 예시값이거나 형식이 맞지 않습니다.\n예) https://abcdefghijklmnop.supabase.co (맨 끝에 / 없이)'
+    : !CFG.SUPABASE_ANON_KEY || /YOUR-/i.test(CFG.SUPABASE_ANON_KEY)
+      ? 'assets/js/config.js 의 SUPABASE_ANON_KEY 가 예시값입니다.\nSupabase → Project Settings → API Keys 의 anon(public) 또는 publishable 키를 넣어 주세요.'
+    : /service_role|sb_secret_/i.test(atobSafe(CFG.SUPABASE_ANON_KEY) + CFG.SUPABASE_ANON_KEY)
+      ? '⚠ config.js 에 service_role(secret) 키가 들어 있습니다. 즉시 지우고 Supabase 에서 이 키를 재발급(rotate)하세요.\n관리자 페이지에는 anon(public) 키만 넣어야 합니다.'
+    : null;
+  function atobSafe(k) { try { return atob(k.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')); } catch (e) { return ''; } }
+  if (configProblem) {
+    document.addEventListener('DOMContentLoaded', function () {
+      document.body.classList.remove('guarding');
+      document.getElementById('main').innerHTML = '<div class="card login"><h1>설정이 필요합니다</h1><div class="msg err"></div></div>';
+      document.querySelector('#main .msg').textContent = configProblem;
+    });
+    throw new Error('[DARE] ' + configProblem);
+  }
+
   var sb = window.supabase.createClient(CFG.SUPABASE_URL, CFG.SUPABASE_ANON_KEY, {
     auth: { persistSession: true, autoRefreshToken: true, storageKey: 'dare-admin', detectSessionInUrl: false }
   });
@@ -41,6 +61,16 @@
   // <input type="datetime-local"> ↔ ISO(UTC)
   function toLocal(iso) { if (!iso) return ''; var d = new Date(iso); d.setMinutes(d.getMinutes() - d.getTimezoneOffset()); return d.toISOString().slice(0, 16); }
   function fromLocal(v) { return v ? new Date(v).toISOString() : null; }
+  // 로그인 오류를 원인별 안내로 바꿈
+  function loginError(e) {
+    var m = (e && e.message) || '';
+    if (/fetch|network|load failed/i.test(m)) return 'Supabase 에 접속하지 못했습니다. config.js 의 SUPABASE_URL 이 맞는지, 인터넷 연결을 확인해 주세요.';
+    if (/invalid api key|no api key/i.test(m)) return 'config.js 의 SUPABASE_ANON_KEY 가 이 프로젝트의 키가 아닙니다.';
+    if (/email not confirmed/i.test(m)) return '이메일 확인이 안 된 계정입니다. Supabase → Authentication → Users 에서 이 사용자를 확인(Confirm) 처리하거나, Add user 때 "Auto Confirm User"를 체크해 다시 만드세요.';
+    if (/invalid login credentials/i.test(m)) return '이메일 또는 비밀번호가 맞지 않습니다.';
+    if (/rate|too many/i.test(m)) return '시도가 너무 많습니다. 잠시 후 다시 시도해 주세요.';
+    return m || '알 수 없는 오류가 발생했습니다.';
+  }
   function errText(e) { return ((e && e.message) || String(e)).replace(/^.*?ERROR:\s*/, ''); }
   function toast(type, text) {
     var box = $('#toast'); if (!box) return;
@@ -80,8 +110,6 @@
   async function currentAdmin() {
     var s = (await sb.auth.getSession()).data.session;
     if (!s) return null;
-    var aal = (await sb.auth.mfa.getAuthenticatorAssuranceLevel()).data;
-    if (!aal || aal.currentLevel !== 'aal2') return null;
     try { return await rpc('admin_me'); } catch (e) { return null; }
   }
 
@@ -124,7 +152,7 @@
 
   window.DA = {
     sb: sb, config: CFG, $: $, $$: $$, esc: esc, fmt: fmt, toLocal: toLocal, fromLocal: fromLocal,
-    errText: errText, toast: toast, rpc: rpc, q: q, param: param, isUuid: isUuid, log: log,
+    errText: errText, loginError: loginError, toast: toast, rpc: rpc, q: q, param: param, isUuid: isUuid, log: log,
     STATUS: STATUS, badge: badge, FILE_LABEL: FILE_LABEL, RESULT_LABEL: RESULT_LABEL,
     loadCalls: loadCalls, period: period, callOptions: callOptions, currentAdmin: currentAdmin, logout: logout, page: page
   };
