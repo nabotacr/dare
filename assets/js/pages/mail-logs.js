@@ -80,13 +80,19 @@ DA.page('mail-logs', async function (main) {
     try {
       var c = await callFn('check'), items = [];
       var ok = function (cond, good, bad) { items.push('<li style="color:' + (cond ? '#1f7a4d' : '#b3261e') + '">' + (cond ? '✔ ' + good : '✘ ' + bad) + '</li>'); };
-      ok(c.RESEND_API_KEY, 'RESEND_API_KEY 설정됨', 'RESEND_API_KEY 가 없습니다 (Edge Functions > Secrets)');
+      if (c.PROVIDER === 'smtp') {
+        items.push('<li><b>발송 방법: SMTP</b> (' + esc(c.SMTP_HOST) + ':' + esc(c.SMTP_PORT) + ')</li>');
+        ok(String(c.SMTP_PORT) === '465', 'SMTP_PORT 465', 'SMTP_PORT 를 465 로 바꿔 주세요 (Edge Function 은 587 을 쓸 수 없음)');
+        ok(c.SMTP_USER && c.SMTP_PASS, 'SMTP 계정 설정됨: ' + esc(c.SMTP_USER), 'SMTP_USER 또는 SMTP_PASS 가 없습니다');
+        ok(c.smtp_ok, 'SMTP 서버 접속·로그인 성공', 'SMTP 접속 실패: ' + esc(c.smtp_error || '') + ' (계정, 비밀번호, 외부 메일 프로그램 허용 여부 확인)');
+      } else if (c.PROVIDER === 'resend') {
+        items.push('<li><b>발송 방법: Resend API</b></li>');
+        if (Array.isArray(c.resend_domains)) ok(c.from_domain_verified, 'Resend 도메인 인증 완료', '보내는 주소의 도메인이 Resend 에서 인증되지 않았습니다');
+      } else ok(false, '', '발송 방법이 없습니다. SMTP_HOST·SMTP_USER·SMTP_PASS (또는 RESEND_API_KEY) 를 Secrets 에 넣어 주세요');
       ok(c.MAIL_FROM, '보내는 주소: ' + esc(c.MAIL_FROM), 'MAIL_FROM 이 없습니다');
-      if (Array.isArray(c.resend_domains)) ok(c.from_domain_verified, 'Resend 도메인 인증 완료', '보내는 주소의 도메인이 Resend 에서 인증되지 않았습니다. 등록된 도메인: ' + esc(c.resend_domains.map(function (d) { return d.name + '(' + d.status + ')'; }).join(', ') || '없음'));
-      else items.push('<li class="muted">Resend 도메인: ' + esc(c.resend_domains || '확인 안 함') + '</li>');
-      ok(c.WEBHOOK_SECRET, 'WEBHOOK_SECRET 설정됨 (SQL [설정] 의 두 번째 값과 같아야 함)', 'WEBHOOK_SECRET 이 없습니다');
-      ok(c.SEND_EMAIL_HOOK_SECRET, '인증코드 메일 훅 비밀값 설정됨', 'SEND_EMAIL_HOOK_SECRET 이 없습니다 (인증코드 메일이 로그에 남지 않음)');
+      ok(c.WEBHOOK_SECRET, 'WEBHOOK_SECRET 설정됨 (SQL set_mail_config 의 두 번째 값과 같아야 함)', 'WEBHOOK_SECRET 이 없습니다');
       ok(c.MYPAGE_URL, '메일 버튼 주소: ' + esc(c.MYPAGE_URL), 'MYPAGE_URL 이 없습니다 (메일 버튼이 빠짐)');
+      items.push('<li class="muted">인증코드 메일: ' + (c.SEND_EMAIL_HOOK_SECRET ? '이 함수로 발송 (Hook 사용)' : 'Supabase 가 직접 발송 (Hook 미사용, 정상)') + '</li>');
       items.push('<li class="muted">대기열 현황: ' + esc(JSON.stringify(c.queue || {})) + '</li>');
       out.innerHTML = '<ul style="margin:12px 0 0;padding-left:18px;line-height:1.9">' + items.join('') + '</ul>';
     } catch (e) { out.innerHTML = '<div class="msg err">' + esc(D.errText(e)) + '</div>'; }
