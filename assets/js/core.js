@@ -90,7 +90,7 @@
     submitted:            ['제출완료', '#2b5fd9', '#eaf0fc'],
     reviewing:            ['검토중', '#9a5b00', '#fdf3e2'],
     supplement_requested: ['보완요청', '#b3261e', '#fbeaea'],
-    resubmit_allowed:     ['수정 가능(요청 승인)', '#6a3fb5', '#f1ecfb'],
+    resubmit_allowed:     ['수정 가능(권한 부여)', '#6a3fb5', '#f1ecfb'],
     withdrawn:            ['제출취소', '#5f6577', '#eef0f4']
   };
   function badge(st) { var s = STATUS[st] || [st, '#333', '#eee']; return '<span class="badge" style="color:' + s[1] + ';background:' + s[2] + '">' + esc(s[0]) + '</span>'; }
@@ -105,7 +105,8 @@
     return Array.isArray(v) ? v.join(', ') : String(v);
   }
   var FILE_LABEL = { proposal: 'Research Proposal', budget: 'Research Budget Plan', cv: 'CV' };
-  var RESULT_LABEL = { selected: '선정', not_selected: '미선정' };
+  var RESULT_LABEL = { approved: '지원 결정', revise: '보완 후 재검토', not_approved: '지원하지 않음' };
+  var RESULT_COLOR = { approved: ['#1f7a4d', '#e8f4ee'], revise: ['#9a5b00', '#fdf3e2'], not_approved: ['#5f6577', '#eef0f4'] };
 
   // 접수기간 문구 (마감이 비어 있으면 상시 접수)
   function period(c) { return c.apply_end_at ? fmt(c.apply_start_at) + ' ~ ' + fmt(c.apply_end_at) : fmt(c.apply_start_at) + ' ~ 상시 접수'; }
@@ -164,7 +165,7 @@
   window.DA = {
     sb: sb, config: CFG, $: $, $$: $$, esc: esc, fmt: fmt, toLocal: toLocal, fromLocal: fromLocal,
     errText: errText, loginError: loginError, toast: toast, rpc: rpc, q: q, param: param, isUuid: isUuid, log: log,
-    STATUS: STATUS, badge: badge, FILE_LABEL: FILE_LABEL, TYPE_LABEL: TYPE_LABEL, BASE_COLS: BASE_COLS, snapValue: snapValue, RESULT_LABEL: RESULT_LABEL,
+    STATUS: STATUS, badge: badge, FILE_LABEL: FILE_LABEL, TYPE_LABEL: TYPE_LABEL, BASE_COLS: BASE_COLS, snapValue: snapValue, RESULT_LABEL: RESULT_LABEL, RESULT_COLOR: RESULT_COLOR,
     loadCalls: loadCalls, period: period, callOptions: callOptions, currentAdmin: currentAdmin, logout: logout, page: page
   };
 })();

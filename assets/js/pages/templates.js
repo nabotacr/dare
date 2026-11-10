@@ -4,9 +4,12 @@ DA.page('templates', async function (main) {
   var rows = await D.q(D.sb.from('mail_templates').select('*').order('audience', { ascending: false }).order('key'));
 
   main.innerHTML = '<h1>메일 양식</h1>' +
-    '<div class="card"><p>사용 가능한 변수: <code>{{name}}</code> <code>{{research_title}}</code> <code>{{receipt_no}}</code> <code>{{call_title}}</code> ' +
-    '<code>{{deadline}}</code> <code>{{reason}}</code> <code>{{decision}}</code> <code>{{mypage_url}}</code></p>' +
-    '<p class="muted">본문은 HTML로 작성합니다. 링크는 &lt;a href="{{mypage_url}}"&gt;제출내역&lt;/a&gt; 처럼 씁니다. 날짜 변수는 한국시간으로 표시됩니다.</p></div>' +
+    '<div class="card"><p><b>사용 가능한 변수</b></p><p class="muted" style="line-height:2">' +
+    '기본: <code>{{name}}</code> 연구자 이름 · <code>{{research_title}}</code> 연구제목 · <code>{{receipt_no}}</code> 접수번호 · <code>{{email}}</code> 연구자 이메일<br>' +
+    '날짜 (뒤에 |ko 또는 |en): <code>{{submitted_at|ko}}</code> 접수 일시 · <code>{{last_submitted_at|en}}</code> 재제출 일시 · <code>{{deadline|ko}}</code> 기한 · <code>{{edit_deadline|ko}}</code> 7일 수정 기한 · <code>{{withdrawn_at|ko}}</code> 취소 일시<br>' +
+    '보완·수정 권한: <code>{{details}}</code> 요청 사항 · <code>{{documents_ko}}</code> <code>{{documents_en}}</code> 서류 · <code>{{method_ko}}</code> <code>{{method_en}}</code> 제출 방법 · <code>{{attachment_note_ko}}</code> 첨부 안내<br>' +
+    '결과: <code>{{result_ko}}</code> <code>{{result_en}}</code> 검토 결과 · <code>{{reason}}</code> 사유 / 블록: <code>{{button}}</code> My Submissions 버튼 · <code>{{info_box}}</code> 접수 정보 상자 · <code>{{code_box}}</code> 인증코드</p>' +
+    '<p class="muted">본문은 HTML 로 작성합니다 (&lt;p&gt;, &lt;ul&gt;&lt;li&gt;, &lt;b&gt;, &lt;hr&gt; 사용). 메일 상단 띠와 하단 문의처는 자동으로 붙습니다.</p></div>' +
     rows.map(function (t) {
       return '<div class="card" data-key="' + esc(t.key) + '"><h2>' + esc(t.description) +
         ' <span class="muted">' + esc(t.key) + ' · ' + (t.audience === 'admin' ? '관리자에게' : '연구자에게') + '</span></h2>' +

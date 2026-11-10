@@ -6,7 +6,7 @@ DA.page('audit', async function (main) {
   if (action) query = query.eq('action', action);
   var rows = await D.q(query);
   var actions = ['admin_login', 'view_submission', 'download_file', 'export_csv', 'start_review', 'request_supplement',
-                 'decide_edit_request', 'extend_deadline', 'set_result', 'correct_result', 'save_form', 'resend_mail'];
+                 'decide_edit_request', 'extend_deadline', 'set_result', 'correct_result', 'save_form', 'resend_mail', 'clear_result'];
 
   main.innerHTML = '<h1>감사 로그</h1><div class="card row"><span class="muted">작업으로 거르기:</span> <a href="audit.html">전체</a>' +
     actions.map(function (a) { return ' · <a href="audit.html?action=' + a + '"' + (a === action ? ' style="font-weight:700"' : '') + '>' + a + '</a>'; }).join('') + '</div>' +

@@ -82,7 +82,7 @@ DA.page('form', async function (main) {
               file: '<span class="b g sm" style="cursor:default">파일 올리기</span> <span class="muted">PDF, 최대 ' + (f.max_mb || 20) + 'MB</span>',
               consent: '<span class="muted">[동의 전문] + [ ] ' + esc(f.agree_label || '동의합니다.') + '</span>' };
     if (CHOICE.indexOf(f.type) >= 0) return '<span class="muted">' + esc((f.options || []).slice(0, 4).join(' / ')) + ((f.options || []).length > 4 ? ' 외 ' + ((f.options || []).length - 4) + '개' : '') +
-      (f.type === 'country' && f.allow_other !== false ? ' / 기타(직접 입력)' : '') + '</span>';
+      ((f.type === 'country' && f.allow_other !== false) || (f.type === 'select' && f.allow_other) ? ' / 기타(직접 입력)' : '') + '</span>';
     return p[f.type] || '';
   }
 
@@ -110,6 +110,7 @@ DA.page('form', async function (main) {
     if (CHOICE.indexOf(f.type) >= 0) {
       h += '<label>선택지 (한 줄에 하나)</label><textarea data-f="options" style="min-height:' + (f.type === 'country' ? 160 : 90) + 'px">' + esc((f.options || []).join('\n')) + '</textarea>';
       if (f.type === 'country') h += '<label class="inline"><input type="checkbox" data-f="allow_other"' + (f.allow_other !== false ? ' checked' : '') + '>목록 끝에 "기타 (직접 입력)" 표시</label>';
+      if (f.type === 'select') h += '<label class="inline"><input type="checkbox" data-f="allow_other"' + (f.allow_other ? ' checked' : '') + '>목록 끝에 "기타 (직접 입력)" 표시</label>';
     }
     if (f.type === 'text' || f.type === 'textarea') h += '<label>최대 글자 수</label><input type="number" data-f="max_length" min="1" max="' + (f.type === 'text' ? 300 : 20000) + '" value="' + (f.max_length || (f.type === 'text' ? 300 : 5000)) + '" style="width:160px">';
     if (f.type === 'file') h += '<label>최대 용량 (MB, 1~50)</label><input type="number" data-f="max_mb" min="1" max="50" value="' + (f.max_mb || 20) + '" style="width:160px">';

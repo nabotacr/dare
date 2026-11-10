@@ -16,7 +16,8 @@ DA.page('submissions', async function (main) {
     '<button class="b" id="f-go">검색</button><button class="b g" id="f-csv">엑셀(CSV)</button></div>' +
     '<div class="row" style="margin-top:10px"><span class="muted">선택한 항목:</span>' +
     '<button class="b g" id="bulk-review">검토 시작</button>' +
-    '<button class="b g" data-result="selected">결과: 선정</button><button class="b g" data-result="not_selected">결과: 미선정</button></div></div>' +
+    '<span class="muted" style="margin-left:8px">결과 입력:</span><button class="b g" data-result="approved">지원 결정</button><button class="b g" data-result="revise">보완 후 재검토</button><button class="b g" data-result="not_approved">지원하지 않음</button>' +
+    '<button class="b" id="bulk-publish" style="margin-left:8px">결과 안내 발송</button></div></div>' +
     '<div class="card scroll" id="list"></div>';
 
   $('#f-go').addEventListener('click', function () {
@@ -43,10 +44,17 @@ DA.page('submissions', async function (main) {
     });
   });
 
+  $('#bulk-publish').addEventListener('click', async function () {
+    var ids = checked(); if (!ids.length) return D.toast('info', '항목을 선택해 주세요.');
+    if (!confirm('선택한 ' + ids.length + '건 중 결과가 입력되고 아직 안내하지 않은 건에 결과 안내 메일을 보냅니다. 진행할까요?')) return;
+    try { var n = await D.rpc('admin_publish_results', { p_ids: ids }); D.toast('ok', n + '건에 결과를 안내했습니다.'); load(); }
+    catch (e) { D.toast('err', D.errText(e)); }
+  });
+
   function checked() { return D.$$('.chk:checked').map(function (c) { return c.value; }); }
 
   async function load() {
-    var query = D.sb.from('submissions').select('*, submission_results(result)').order('submitted_at', { ascending: false }).limit(1000);
+    var query = D.sb.from('submissions').select('*, submission_results(result, published_at)').order('submitted_at', { ascending: false }).limit(1000);
     if (f.revised) query = query.gt('current_version', 1);
     if (f.status) query = query.eq('status', f.status);
     if (f.text) {
@@ -57,10 +65,10 @@ DA.page('submissions', async function (main) {
     $('#list').innerHTML = '<p class="muted">' + rows.length + '건</p><table class="tbl"><thead><tr>' +
       '<th><input type="checkbox" id="chk-all" aria-label="전체 선택"></th><th>접수번호</th><th>연구제목</th><th>성명</th><th>국적</th><th>소속</th><th>상태</th><th>결과</th><th>제출</th><th>최근 수정</th></tr></thead><tbody>' +
       rows.map(function (s) {
-        var res = s.submission_results && (s.submission_results.result || (s.submission_results[0] && s.submission_results[0].result));
+        var rr = s.submission_results && (s.submission_results.result ? s.submission_results : s.submission_results[0]), res = rr && rr.result;
         return '<tr class="click" data-id="' + s.id + '"><td><input type="checkbox" class="chk" value="' + s.id + '"></td><td>' + esc(s.receipt_no) +
           '</td><td>' + esc(s.research_title) + '</td><td>' + esc(s.researcher_name) + '</td><td>' + esc(s.nationality) + '</td><td>' + esc(s.affiliation || '') +
-          '</td><td>' + D.badge(s.status) + '</td><td>' + (res ? D.RESULT_LABEL[res] : '') + '</td><td>' + D.fmt(s.submitted_at) +
+          '</td><td>' + D.badge(s.status) + '</td><td>' + (res ? D.RESULT_LABEL[res] + (rr.published_at ? '' : ' <span class="muted">(미안내)</span>') : '') + '</td><td>' + D.fmt(s.submitted_at) +
           '</td><td>' + (s.current_version > 1 ? D.fmt(s.last_submitted_at) + ' (v' + s.current_version + ')' : '-') + '</td></tr>';
       }).join('') + '</tbody></table>';
     $('#chk-all').addEventListener('change', function (e) { D.$$('.chk').forEach(function (c) { c.checked = e.target.checked; }); });
