@@ -68,7 +68,7 @@ DA.page('submissions', async function (main) {
         var rr = s.submission_results && (s.submission_results.result ? s.submission_results : s.submission_results[0]), res = rr && rr.result;
         return '<tr class="click" data-id="' + s.id + '"><td><input type="checkbox" class="chk" value="' + s.id + '"></td><td>' + esc(s.receipt_no) +
           '</td><td>' + esc(s.research_title) + '</td><td>' + esc(s.researcher_name) + '</td><td>' + esc(s.nationality) + '</td><td>' + esc(s.affiliation || '') +
-          '</td><td>' + D.badge(s.status) + '</td><td>' + (res ? D.RESULT_LABEL[res] + (rr.published_at ? '' : ' <span class="muted">(미안내)</span>') : '') + '</td><td>' + D.fmt(s.submitted_at) +
+          '</td><td>' + D.badge(s.status, rr && rr.published_at) + '</td><td>' + (res ? D.RESULT_LABEL[res] + (rr.published_at ? '' : ' <span class="muted">(미안내)</span>') : '') + '</td><td>' + D.fmt(s.submitted_at) +
           '</td><td>' + (s.current_version > 1 ? D.fmt(s.last_submitted_at) + ' (v' + s.current_version + ')' : '-') + '</td></tr>';
       }).join('') + '</tbody></table>';
     $('#chk-all').addEventListener('change', function (e) { D.$$('.chk').forEach(function (c) { c.checked = e.target.checked; }); });

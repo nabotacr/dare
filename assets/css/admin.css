@@ -6,15 +6,20 @@ body { margin:0; font-family:'Pretendard','Apple SD Gothic Neo','Malgun Gothic',
 [hidden] { display:none !important; }
 body.guarding main, body.guarding #layout { visibility:hidden; }   /* 권한 확인 전에는 화면을 보이지 않음 */
 
-/* 상단 바 */
-.topbar { display:flex; align-items:center; gap:20px; padding:0 24px; height:64px; background:var(--ink); color:#fff; position:sticky; top:0; z-index:5; }
-.topbar b { font-size:18px; letter-spacing:.02em; white-space:nowrap; }
-.topbar nav { display:flex; gap:2px; flex:1; overflow-x:auto; }
-.topbar nav a { color:#c9cfe4; text-decoration:none; padding:8px 12px; border-radius:4px; white-space:nowrap; }
-.topbar nav a.on { background:rgba(255,255,255,.14); color:#fff; font-weight:600; }
+/* 상단 바 + 메뉴 탭 */
+.topbar { display:flex; align-items:center; gap:16px; padding:0 28px; height:58px; background:var(--ink); color:#fff; }
+.topbar b { font-size:19px; letter-spacing:.02em; white-space:nowrap; flex:1; }
 .topbar .me { font-size:14px; color:#c9cfe4; white-space:nowrap; }
+.tabbar { position:sticky; top:0; z-index:5; background:#fff; border-bottom:1px solid var(--line); box-shadow:0 2px 6px rgba(29,42,87,.05); }
+.tabbar nav { display:flex; gap:4px; max-width:1360px; margin:0 auto; padding:0 20px; overflow-x:auto; }
+.tabbar nav a { display:flex; align-items:center; gap:8px; padding:16px 18px 14px; font-size:16px; font-weight:600; color:#6b7390; text-decoration:none;
+                border-bottom:3px solid transparent; white-space:nowrap; transition:color .15s, background .15s; }
+.tabbar nav a:hover { color:var(--ink); background:#f4f6fb; }
+.tabbar nav a.on { color:var(--info); border-bottom-color:var(--info); }
+.tabbar nav a .ic { width:18px; height:18px; flex:none; }
+.tabbar nav a .cnt { background:#b3261e; color:#fff; border-radius:999px; font-size:12px; padding:1px 7px; }
 
-main { max-width:1280px; margin:0 auto; padding:24px; }
+main { max-width:1360px; margin:0 auto; padding:24px; }
 h1 { font-size:26px; margin:0 0 18px; } h2 { font-size:19px; margin:0 0 14px; } h3 { font-size:16px; margin:20px 0 10px; }
 .card { background:var(--card); border:1px solid var(--line); border-radius:6px; padding:20px; margin-bottom:16px; }
 .row { display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
@@ -60,3 +65,8 @@ details { margin:8px 0; } summary { cursor:pointer; font-weight:600; }
 .login { max-width:380px; margin:10vh auto; }
 .login img.qr { width:180px; height:180px; display:block; margin:8px auto; background:#fff; }
 #toast { position:fixed; right:20px; bottom:20px; max-width:420px; z-index:20; }
+
+/* 탭 (메일 로그, 메일 양식 언어) */
+.seg { display:inline-flex; background:#eef0f5; border-radius:8px; padding:4px; gap:4px; margin-bottom:14px; }
+.seg button { border:0; background:none; font:inherit; font-weight:600; font-size:15px; color:#5a6383; padding:8px 18px; border-radius:6px; cursor:pointer; }
+.seg button.on { background:#fff; color:var(--ink); box-shadow:0 1px 3px rgba(0,0,0,.12); }

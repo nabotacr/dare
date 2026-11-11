@@ -90,10 +90,13 @@
     submitted:            ['제출완료', '#2b5fd9', '#eaf0fc'],
     reviewing:            ['검토중', '#9a5b00', '#fdf3e2'],
     supplement_requested: ['보완요청', '#b3261e', '#fbeaea'],
-    resubmit_allowed:     ['수정 가능(권한 부여)', '#6a3fb5', '#f1ecfb'],
+    resubmit_allowed:     ['수정 가능', '#6a3fb5', '#f1ecfb'],
     withdrawn:            ['제출취소', '#5f6577', '#eef0f4']
   };
-  function badge(st) { var s = STATUS[st] || [st, '#333', '#eee']; return '<span class="badge" style="color:' + s[1] + ';background:' + s[2] + '">' + esc(s[0]) + '</span>'; }
+  function badge(st, reviewed) {
+    var s = reviewed && st !== 'withdrawn' ? ['검토완료', '#1f7a4d', '#e8f4ee'] : (STATUS[st] || [st, '#333', '#eee']);
+    return '<span class="badge" style="color:' + s[1] + ';background:' + s[2] + '">' + esc(s[0]) + '</span>';
+  }
   var TYPE_LABEL = { text: '단답형', textarea: '장문형', email: '이메일', number: '숫자', date: '날짜', url: '링크(URL)', yesno: '예/아니오',
                      radio: '단일선택', select: '드롭다운', checkbox: '다중선택', country: '국가 선택', file: '파일(PDF)', consent: '동의' };
   var BASE_COLS = ['research_title', 'researcher_name', 'nationality', 'affiliation', 'email'];
@@ -130,15 +133,22 @@
   var idleTimer;
   function resetIdle() { clearTimeout(idleTimer); idleTimer = setTimeout(logout, (CFG.IDLE_MINUTES || 30) * 60000); }
 
+  var ICON = {"dashboard": "<path d=\"M3 13h8V3H3zm10 8h8V11h-8zM3 21h8v-6H3zm10-18v6h8V3z\"/>", "submissions": "<path d=\"M6 2h9l5 5v15H6zM14 2v6h6M9 13h8M9 17h8\"/>", "edit-requests": "<path d=\"M4 20h4L19 9l-4-4L4 16zM14 6l4 4\"/>", "form": "<path d=\"M4 5h16M4 12h16M4 19h10\"/>", "mail-logs": "<path d=\"M3 5h18v14H3zM3 6l9 7 9-7\"/>", "templates": "<path d=\"M4 4h16v16H4zM8 9h8M8 13h8M8 17h5\"/>", "recipients": "<path d=\"M16 19v-1a4 4 0 0 0-8 0v1M12 11a3 3 0 1 0 0-6 3 3 0 0 0 0 6M20 19v-1a3 3 0 0 0-2-2.8M17 5.2a3 3 0 0 1 0 5.6\"/>", "audit": "<path d=\"M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z\"/>"};
   function renderLayout(pageId, me) {
     $('#layout').innerHTML =
-      '<header class="topbar"><b>DARE 관리자</b><nav>' +
+      '<header class="topbar"><b>DARE 관리자</b><span class="me">' + esc(me.name) + ' (' + (me.role === 'super' ? '최고관리자' : '담당자') + ')</span>' +
+      '<button class="b g sm" id="logout">로그아웃</button></header>' +
+      '<div class="tabbar"><nav>' +
       MENU.filter(function (m) { return !m.superOnly || me.role === 'super'; }).map(function (m) {
-        return '<a href="' + m.href + '"' + (m.id === pageId ? ' class="on"' : '') + '>' + m.label + '</a>';
-      }).join('') +
-      '</nav><span class="me">' + esc(me.name) + ' (' + (me.role === 'super' ? '최고관리자' : '담당자') + ')</span>' +
-      '<button class="b g sm" id="logout">로그아웃</button></header>';
+        return '<a href="' + m.href + '"' + (m.id === pageId ? ' class="on"' : '') + ' data-menu="' + m.id + '">' +
+          '<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">' + (ICON[m.id] || '') + '</svg>' +
+          m.label + '</a>';
+      }).join('') + '</nav></div>';
     $('#logout').addEventListener('click', logout);
+    /* 처리 대기 수정요청 수를 탭에 표시 */
+    sb.from('edit_requests').select('id', { count: 'exact', head: true }).eq('status', 'pending').then(function (r) {
+      if (r.count) { var a = document.querySelector('[data-menu="edit-requests"]'); if (a) a.insertAdjacentHTML('beforeend', '<span class="cnt">' + r.count + '</span>'); }
+    });
   }
 
   /* 각 페이지 진입점 */

@@ -61,14 +61,19 @@ DA.page('submissions', async function (main) {
 
     main.innerHTML =
       '<p style="margin:0 0 8px"><a href="submissions.html">← 제출내역 목록</a></p>' +
-      '<div class="card sd-head"><div><div class="row">' + D.badge(s.status) +
+      '<div class="card sd-head"><div><div class="row">' + D.badge(s.status, result && result.published_at) +
       (result ? '<span class="badge" style="color:' + D.RESULT_COLOR[result.result][0] + ';background:' + D.RESULT_COLOR[result.result][1] + '">' + D.RESULT_LABEL[result.result] + (result.published_at ? ' · 안내됨' : ' · 미안내') + '</span>' : '') +
       '<span class="muted">' + esc(s.receipt_no) + '</span></div><h1>' + esc(s.research_title) + '</h1>' +
       '<div class="sd-meta"><span>연구자 <b style="color:var(--ink)">' + esc(s.researcher_name) + '</b></span><span>' + esc(s.email) + '</span>' +
       '<span>최초 제출 ' + D.fmt(s.submitted_at) + '</span>' + (s.current_version > 1 ? '<span>최근 수정 ' + D.fmt(s.last_submitted_at) + ' (v' + s.current_version + ')</span>' : '') + '</div></div></div>' +
 
-      (s.status === 'supplement_requested' ? '<div class="msg err">보완요청 중 · 기한 ' + D.fmt(s.supplement_deadline) + '\n' + esc(s.supplement_reason) + '</div>' : '') +
-      (s.status === 'resubmit_allowed' ? '<div class="msg info">수정요청 승인됨 · 연구자 수정 기한 ' + D.fmt(s.resubmit_deadline) + '</div>' : '') +
+      (s.supplement_reason && (s.status === 'supplement_requested' || (s.revision_kind === 'supplement' && s.revision_until && Date.parse(s.revision_until) > Date.now())) ?
+        '<div class="msg ' + (s.status === 'supplement_requested' ? 'err' : 'info') + '"><b>' + (s.status === 'supplement_requested' ? '보완요청 중' : '보완 제출 완료 · 기한까지 추가 보완 가능') + '</b> · 기한 ' + D.fmt(s.revision_until || s.supplement_deadline) +
+        '\n요청 사항: ' + esc(s.supplement_reason) + '\n보완 서류: ' + esc((s.revision_files || []).join(', ') || '전체 서류') +
+        ' · 제출 방법: ' + (s.supplement_method === 'email' ? '이메일 회신' : '홈페이지 재제출') +
+        (s.supplement_attachment ? '\n첨부: <button class="l" data-att="' + esc(s.supplement_attachment.path) + '">' + esc(s.supplement_attachment.name || 'PDF') + '</button>' : '') + '</div>' : '') +
+      (s.status === 'resubmit_allowed' ? '<div class="msg info">수정 권한 부여됨 · 연구자 수정 기한 ' + D.fmt(s.resubmit_deadline) + ' · 서류: ' + esc((s.revision_files || []).join(', ') || '전체') + '</div>' : '') +
+      (s.status === 'submitted' && s.revision_kind === 'resubmit' && s.revision_until && Date.parse(s.revision_until) > Date.now() ? '<div class="msg info">수정 권한으로 재제출 완료 · ' + D.fmt(s.revision_until) + ' 까지 추가 수정 가능</div>' : '') +
       (s.withdrawn_at ? '<div class="msg info">제출취소 ' + D.fmt(s.withdrawn_at) + ' · ' + esc(s.withdraw_reason || '사유 없음') + '</div>' : '') +
 
       '<div class="split" style="grid-template-columns:minmax(0,1fr) 340px"><div>' +
@@ -111,8 +116,8 @@ DA.page('submissions', async function (main) {
         '<label>제출 방법</label><label class="inline"><input type="radio" name="sup-m" value="website" checked>홈페이지 재제출</label><label class="inline"><input type="radio" name="sup-m" value="email">담당자 이메일 회신</label>' +
         '<label>검토 의견서 PDF 첨부 (선택, 20MB 이하)</label><input type="file" id="sup-file" accept="application/pdf,.pdf">' +
         '<button class="b" data-act="supplement" style="margin-top:10px">보완 요청 보내기</button></details>' : '') +
-      (['supplement_requested', 'resubmit_allowed'].indexOf(s.status) >= 0 ?
-        '<details><summary>기한 연장</summary>' + (s.status === 'supplement_requested'
+      (['supplement_requested', 'resubmit_allowed'].indexOf(s.status) >= 0 || (s.revision_until && Date.parse(s.revision_until) > Date.now()) ?
+        '<details><summary>기한 연장</summary>' + (s.status === 'supplement_requested' || s.revision_kind === 'supplement'
           ? '<label>보완 기한</label><input type="datetime-local" id="ext-sup" value="' + D.toLocal(s.supplement_deadline) + '">'
           : '<label>수정 기한</label><input type="datetime-local" id="ext-res" value="' + D.toLocal(s.resubmit_deadline) + '">') +
         '<label>사유</label><input id="ext-reason"><button class="b" data-act="extend" style="margin-top:8px">연장</button></details>' : '') +
@@ -209,6 +214,13 @@ DA.page('submissions', async function (main) {
   });
   main.addEventListener('click', async function (e) {
     var vb = e.target.closest('[data-ver]'); if (vb) { shownVer = Number(vb.dataset.ver); return render(); }
+    var ab = e.target.closest('[data-att]');
+    if (ab) {   /* 보완 요청 첨부 PDF 내려받기 */
+      var dl = await sb.storage.from('admin-attachments').download(ab.dataset.att);
+      if (dl.error) return D.toast('err', '첨부파일을 받지 못했습니다.');
+      var a = document.createElement('a'); a.href = URL.createObjectURL(dl.data); a.download = (S.s.supplement_attachment && S.s.supplement_attachment.name) || 'attachment.pdf';
+      document.body.appendChild(a); a.click(); setTimeout(function () { URL.revokeObjectURL(a.href); a.remove(); }, 2000); return;
+    }
     var b = e.target.closest('[data-act]'); if (!b) return;
     if (b.dataset.act === 'download') return download(b);
     var s = S.s, req = S.req;
