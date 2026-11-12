@@ -4,7 +4,7 @@
  * service_role / secret 키, Resend 키는 절대 이 저장소에 넣지 마세요.
  * ===================================================================== */
 window.DARE_ADMIN_CONFIG = {
-  SUPABASE_URL: 'https://uwqissgdanqxxmwftcvi.supabase.co',
-  SUPABASE_ANON_KEY: 'sb_publishable_RqC6RmySBVbjVAv7Zu2CYg_isS7bEn4',
+  SUPABASE_URL: 'https://YOUR-PROJECT-REF.supabase.co',
+  SUPABASE_ANON_KEY: 'YOUR-ANON-OR-PUBLISHABLE-KEY',
   IDLE_MINUTES: 30          // 조작이 없으면 자동 로그아웃 (분)
 };

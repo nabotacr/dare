@@ -1,14 +1,23 @@
-/* templates.html — 메일 양식: 연구자 메일은 국문/영문 탭으로 각각 편집 (국적 대한민국 = 국문, 그 외 = 영문 발송) */
+/* templates.html — 메일 양식: [연구자] [관리자] 탭, 연구자 메일은 국문/영문 탭으로 각각 편집 */
 DA.page('templates', async function (main) {
   var D = DA, esc = D.esc, $ = D.$;
-  var rows = await D.q(D.sb.from('mail_templates').select('*').order('audience', { ascending: false }).order('key'));
+  var all = await D.q(D.sb.from('mail_templates').select('*').order('key'));
+  var ORDER = ['receipt', 'edited', 'supplement_request', 'revision_granted', 'edit_request_decision', 'result_open', 'withdrawn',
+               'admin_new_submission', 'admin_edited', 'admin_edit_request', 'admin_withdrawn'];
+  all = all.filter(function (t) { return t.key !== 'otp_code'; })     /* 인증코드는 Supabase 템플릿으로 발송 */
+           .sort(function (a, b) { return (ORDER.indexOf(a.key) + 1 || 99) - (ORDER.indexOf(b.key) + 1 || 99); });
+  var aud = D.param('to') === 'admin' ? 'admin' : 'researcher';
+  var rows = all.filter(function (t) { return t.audience === aud; });
 
   main.innerHTML = '<h1>메일 양식</h1>' +
-    '<div class="card"><p style="margin-top:0"><b>발송 언어</b> · 연구자 국적이 대한민국이면 <b>국문</b>, 그 외 국가는 <b>영문</b> 양식으로 발송됩니다. 영문 양식이 비어 있으면 국문으로 보냅니다.</p>' +
+    '<div class="seg"><button data-aud="researcher"' + (aud === 'researcher' ? ' class="on"' : '') + '>연구자에게 보내는 메일 (' + all.filter(function (t) { return t.audience === 'researcher'; }).length + ')</button>' +
+    '<button data-aud="admin"' + (aud === 'admin' ? ' class="on"' : '') + '>관리자에게 보내는 메일 (' + all.filter(function (t) { return t.audience === 'admin'; }).length + ')</button></div>' +
+    (aud === 'admin' ? '<div class="card"><p style="margin:0">관리자 메일은 국문으로 발송되며, 받는 사람은 <a href="recipients.html">메일 수신자</a> 메뉴에서 정합니다.</p></div>' : '') +
+    (aud !== 'researcher' ? '' : '<div class="card"><p style="margin-top:0"><b>발송 언어</b> · 연구자 국적이 대한민국이면 <b>국문</b>, 그 외 국가는 <b>영문</b> 양식으로 발송됩니다. 영문 양식이 비어 있으면 국문으로 보냅니다.</p>' +
     '<p class="muted" style="line-height:2;margin:0">기본: <code>{{name}}</code> <code>{{research_title}}</code> <code>{{receipt_no}}</code> <code>{{email}}</code> · ' +
     '날짜: <code>{{submitted_at}}</code> <code>{{last_submitted_at}}</code> <code>{{deadline}}</code> <code>{{edit_deadline}}</code> <code>{{withdrawn_at}}</code> (메일 언어 형식으로 표시) · ' +
     '보완·수정: <code>{{details}}</code> <code>{{documents_ko}}</code> <code>{{documents_en}}</code> <code>{{method_ko}}</code> <code>{{method_en}}</code> <code>{{attachment_note_ko}}</code> <code>{{attachment_note_en}}</code> · ' +
-    '결과: <code>{{result_ko}}</code> <code>{{result_en}}</code> <code>{{reason}}</code> · 블록: <code>{{button}}</code> <code>{{info_box}}</code></p></div>' +
+    '결과: <code>{{result_ko}}</code> <code>{{result_en}}</code> <code>{{reason}}</code> · 블록: <code>{{button}}</code> <code>{{info_box}}</code></p></div>') +
     rows.map(function (t) {
       var bi = t.audience === 'researcher' && t.key !== 'otp_code';
       return '<div class="card" data-key="' + esc(t.key) + '"><div class="row" style="justify-content:space-between"><h2 style="margin:0">' + esc(t.description) +
@@ -20,6 +29,7 @@ DA.page('templates', async function (main) {
     }).join('');
 
   main.addEventListener('click', async function (e) {
+    var ab = e.target.closest('[data-aud]'); if (ab) { location.search = ab.dataset.aud === 'admin' ? '?to=admin' : ''; return; }
     var lb = e.target.closest('[data-lang]');
     if (lb) {
       var c = lb.closest('[data-key]');
